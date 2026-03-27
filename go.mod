@@ -2,7 +2,7 @@ module modelvault
 
 go 1.25
 
-require github.com/segmentio/parquet-go v0.0.0-20230712180008-5d42db8f0d47
+require github.com/parquet-go/parquet-go v0.29.0
 
 require (
 	github.com/andybalholm/brotli v1.0.3 // indirect

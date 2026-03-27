@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -82,7 +83,12 @@ func runPack(ctx context.Context, args []string) error {
 		Workers:      *workers,
 		ChunkSize:    *chunkSize,
 	}
-	return archive.Pack(ctx, opts)
+	if err := archive.Pack(ctx, opts); err != nil {
+		return fmt.Errorf("pack failed: %w", err)
+	}
+	outputFile := filepath.Join(*out, fmt.Sprintf("%s.parquet", *model))
+	fmt.Printf("Successfully packed model to: %s\n", outputFile)
+	return nil
 }
 
 func runUnpack(ctx context.Context, args []string) error {
@@ -111,5 +117,9 @@ func runUnpack(ctx context.Context, args []string) error {
 		OutputDir:   *outdir,
 		Workers:     *workers,
 	}
-	return archive.Unpack(ctx, opts)
+	if err := archive.Unpack(ctx, opts); err != nil {
+		return fmt.Errorf("unpack failed: %w", err)
+	}
+	fmt.Printf("Successfully unpacked files to: %s\n", *outdir)
+	return nil
 }

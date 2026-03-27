@@ -15,8 +15,6 @@ github.com/pierrec/lz4/v4 v4.1.9/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuR
 github.com/segmentio/asm v1.1.3/go.mod h1:Ld3L4ZXGNcSLRg4JBsZ3//1+f/TjYl0Mzen/DQy1EJg=
 github.com/segmentio/encoding v0.3.5 h1:UZEiaZ55nlXGDL92scoVuw00RmiRCazIEmvPSbSvt8Y=
 github.com/segmentio/encoding v0.3.5/go.mod h1:n0JeuIqEQrQoPDGsjo8UNd1iA0U8d8+oHAA4E3G3OxM=
-github.com/segmentio/parquet-go v0.0.0-20230712180008-5d42db8f0d47 h1:5am1AKPVBj3ncaEsqsGQl/cvsW5mSrO9NSPqWWhH8OA=
-github.com/segmentio/parquet-go v0.0.0-20230712180008-5d42db8f0d47/go.mod h1:+J0xQnJjm8DuQUHBO7t57EnmPbstT6+b45+p3DC9k1Q=
 golang.org/x/sys v0.0.0-20211110154304-99a53858aa08/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.8.0 h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=
 golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

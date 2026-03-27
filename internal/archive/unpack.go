@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 )
 
 // fileState tracks a file being unpacked

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 )
 
 func Pack(ctx context.Context, opts PackOptions) error {
@@ -235,15 +235,30 @@ func writeRecords(path string, records <-chan FileRecord) error {
 	}
 	defer f.Close()
 
-	writer := parquet.NewWriter(f)
+	var recordCount int
+	var writer *parquet.Writer
+
 	for record := range records {
+		// Lazily create writer on first record
+		if writer == nil {
+			writer = parquet.NewWriter(f)
+		}
 		if err := writer.Write(&record); err != nil {
 			return fmt.Errorf("write record: %w", err)
 		}
+		recordCount++
 	}
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf("close parquet writer: %w", err)
+
+	// Only close writer if we created it (wrote records)
+	if writer != nil {
+		if err := writer.Close(); err != nil {
+			return fmt.Errorf("close parquet writer: %w", err)
+		}
+	} else {
+		// No records written - return error since we can't create empty parquet
+		return fmt.Errorf("no files found to archive")
 	}
+
 	return nil
 }
 
