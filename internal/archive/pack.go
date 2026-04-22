@@ -1,6 +1,8 @@
 package archive
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/parquet-go/parquet-go"
+	pqgzip "github.com/parquet-go/parquet-go/compress/gzip"
 )
 
 func Pack(ctx context.Context, opts PackOptions) error {
@@ -23,7 +26,7 @@ func Pack(ctx context.Context, opts PackOptions) error {
 		opts.Workers = 1
 	}
 	if opts.ChunkSize <= 0 {
-		opts.ChunkSize = 1024 * 1024
+		opts.ChunkSize = 16 * 1024 * 1024 // 16MB chunks to reduce metadata overhead
 	}
 	if err := os.MkdirAll(opts.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("create output dir: %w", err)
@@ -119,12 +122,11 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 	buf := make([]byte, opts.ChunkSize)
 	fileID := newFileID(item.RelPath)
 	var (
-		chunkIndex int64
 		totalBytes int64
 		sample     []byte
 	)
 
-	// First pass: detect content type and calculate hash
+	// First pass: detect content type, calculate hash
 	for {
 		select {
 		case <-ctx.Done():
@@ -147,7 +149,6 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 				sample = append(sample, piece[:need]...)
 			}
 
-			chunkIndex++
 			totalBytes += int64(n)
 		}
 		if readErr == io.EOF {
@@ -157,8 +158,6 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 			return fmt.Errorf("read %s: %w", item.FullPath, readErr)
 		}
 	}
-
-	totalChunkCount := chunkIndex
 
 	contentType := "binary"
 	if isProbablyText(sample) {
@@ -171,7 +170,7 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 	// Re-read file to write chunks with metadata
 	f.Seek(0, 0)
 	buf = make([]byte, opts.ChunkSize)
-	chunkIndex = 0
+	var chunkIndex int64 = 0
 
 	for {
 		select {
@@ -184,14 +183,22 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 			piece := make([]byte, n)
 			copy(piece, buf[:n])
 
-			// Store data in typed column: text as string, binary as raw bytes
+			// Store data in typed column: text as string, binary as raw bytes (pre-compressed)
 			var textData string
 			var binaryData []byte
 			if contentType == "text" {
 				textData = string(piece)
 			} else {
-				binaryData = make([]byte, len(piece))
-				copy(binaryData, piece)
+				// Pre-compress binary chunks for better compression
+				var buf bytes.Buffer
+				gw := gzip.NewWriter(&buf)
+				if _, err := gw.Write(piece); err != nil {
+					return fmt.Errorf("compress chunk: %w", err)
+				}
+				if err := gw.Close(); err != nil {
+					return fmt.Errorf("close gzip: %w", err)
+				}
+				binaryData = buf.Bytes()
 			}
 
 			record := FileRecord{
@@ -204,7 +211,6 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 				ModelVersion:  opts.ModelVersion,
 				ContentType:   contentType,
 				SizeBytes:     totalBytes,
-				ChunkCount:    totalChunkCount,
 				ChunkIndex:    chunkIndex,
 				TextData:      textData,
 				BinaryData:    binaryData,
@@ -215,6 +221,7 @@ func processFile(ctx context.Context, item workItem, opts PackOptions, recordCh 
 			case <-ctx.Done():
 				return ctx.Err()
 			}
+
 			chunkIndex++
 		}
 		if readErr == io.EOF {
@@ -239,9 +246,14 @@ func writeRecords(path string, records <-chan FileRecord) error {
 	var writer *parquet.Writer
 
 	for record := range records {
-		// Lazily create writer on first record
+		// Lazily create writer on first record with GZIP compression
+		// MaxRowsPerRowGroup ensures all chunks from a file are in same row group for better compression
 		if writer == nil {
-			writer = parquet.NewWriter(f)
+			writer = parquet.NewWriter(f,
+				parquet.Compression(&pqgzip.Codec{}),
+				parquet.MaxRowsPerRowGroup(10000),     // Large enough for most files
+				parquet.WriteBufferSize(16*1024*1024), // 16MB buffer for better compression
+			)
 		}
 		if err := writer.Write(&record); err != nil {
 			return fmt.Errorf("write record: %w", err)
@@ -261,7 +273,6 @@ func writeRecords(path string, records <-chan FileRecord) error {
 
 	return nil
 }
-
 
 func sendErr(errCh chan<- error, err error) {
 	select {

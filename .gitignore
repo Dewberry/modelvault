@@ -1,5 +1,6 @@
 # Build artifacts
 /modelvault
+/binary/
 /dist/
 *.exe
 *.dll

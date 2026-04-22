@@ -8,7 +8,7 @@ import (
 )
 
 type FileRecord struct {
-	// File metadata (repeated per chunk)
+	// File metadata
 	FileID        string `parquet:"file_id"`
 	FileName      string `parquet:"file_name"`
 	Path          string `parquet:"path"`
@@ -18,11 +18,10 @@ type FileRecord struct {
 	ModelVersion  string `parquet:"model_version"`
 	ContentType   string `parquet:"content_type"` // "text" or "binary"
 	SizeBytes     int64  `parquet:"size_bytes"`
-	ChunkCount    int64  `parquet:"chunk_count"`
-	// Chunk data - stored in typed columns for better compression
-	ChunkIndex    int64  `parquet:"chunk_index"`
-	TextData      string `parquet:"text_data"`   // UTF-8 text (populated for text files)
-	BinaryData    []byte `parquet:"binary_data"` // Raw bytes (populated for binary files)
+	ChunkIndex    int64  `parquet:"chunk_index"` // 0-based chunk number for this file
+	// File data - stored chunked for memory safety
+	TextData   string `parquet:"text_data"`   // UTF-8 text chunk (populated for text files)
+	BinaryData []byte `parquet:"binary_data"` // Raw/compressed bytes chunk (populated for binary files)
 }
 
 type FileChunk struct {
