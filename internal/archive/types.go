@@ -53,7 +53,7 @@ type workItem struct {
 
 func newFileID(relPath string) string {
 	sum := sha256.Sum256([]byte(filepath.ToSlash(relPath)))
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:])[:12]
 }
 
 func cleanRelDir(relPath string) string {
