@@ -30,6 +30,8 @@ modelvault pack --input-dir <directory> --output-dir <output-dir> --model <model
 - `--model-version`: Optional model version (stored in metadata)
 - `--workers`: Number of concurrent file workers (default: number of CPU cores)
 - `--chunk-size-bytes`: Chunk size for streaming large files (default: 100MB)
+- `--exclude-extensions`: Comma-separated file extensions to exclude (e.g., `.tif,.hdf,.log`)
+- `--exclude-dirs`: Comma-separated subdirectory names to exclude (e.g., `backup,snapshots`)
 
 **Examples:**
 
@@ -49,6 +51,13 @@ Custom chunk size and workers:
 ```bash
 modelvault pack --input-dir ./large_dataset --output-dir ./output \
   --model dataset --chunk-size-bytes 52428800 --workers 8  # 50MB chunks
+```
+
+Excluding files and directories:
+```bash
+modelvault pack --input-dir ./model_source --model model_v1 \
+  --exclude-extensions .hdf,.tif \
+  --exclude-dirs backup,tmp
 ```
 
 ### Unpack Command

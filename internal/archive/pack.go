@@ -76,17 +76,31 @@ func Pack(ctx context.Context, opts PackOptions) error {
 			return ctx.Err()
 		default:
 		}
-		if d.IsDir() {
-			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
+
 		rel, err := filepath.Rel(rootDir, path)
 		if err != nil {
 			return err
 		}
+
+		// Skip excluded directories
+		if d.IsDir() && shouldExcludeDir(rel, opts.ExcludeSubdirs) {
+			return filepath.SkipDir
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		// Skip excluded file extensions
+		if shouldExcludeFile(path, opts.ExcludeExtensions) {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
 		select {
 		case workCh <- workItem{FullPath: path, RelPath: rel, Size: info.Size()}:
 			return nil
@@ -279,4 +293,32 @@ func sendErr(errCh chan<- error, err error) {
 	case errCh <- err:
 	default:
 	}
+}
+
+func shouldExcludeFile(path string, excludeExtensions []string) bool {
+	if len(excludeExtensions) == 0 {
+		return false
+	}
+	ext := filepath.Ext(path)
+	for _, exc := range excludeExtensions {
+		if ext == exc || "."+ext == exc {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldExcludeDir(relPath string, excludeSubdirs []string) bool {
+	if len(excludeSubdirs) == 0 {
+		return false
+	}
+	parts := filepath.SplitList(filepath.ToSlash(relPath))
+	for _, part := range parts {
+		for _, exc := range excludeSubdirs {
+			if part == exc {
+				return true
+			}
+		}
+	}
+	return false
 }

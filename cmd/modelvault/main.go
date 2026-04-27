@@ -39,7 +39,7 @@ func main() {
 
 func usage() {
 	fmt.Print(`Usage:
-  modelvault pack --input-dir <directory> --model <model-name> [--output-dir <output-dir>] [--model-version <version>] [--workers N] [--chunk-size-bytes N]
+  modelvault pack --input-dir <directory> --model <model-name> [--output-dir <output-dir>] [--model-version <version>] [--workers N] [--chunk-size-bytes N] [--exclude-extensions <exts>] [--exclude-dirs <dirs>]
   modelvault unpack --input-file <parquet-file> --output-dir <directory> [--workers N]
 
 Commands:
@@ -57,6 +57,8 @@ func runPack(ctx context.Context, args []string) error {
 	modelVersion := fs.String("model-version", "", "optional model version")
 	workers := fs.Int("workers", runtime.NumCPU(), "number of concurrent file workers")
 	chunkSize := fs.Int("chunk-size-bytes", 100*1024*1024, "chunk size in bytes")
+	excludeExt := fs.String("exclude-extensions", "", "comma-separated file extensions to exclude (e.g., .tmp,.log)")
+	excludeDirs := fs.String("exclude-dirs", "", "comma-separated subdirectory names to exclude (e.g., node_modules,.git)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -75,13 +77,33 @@ func runPack(ctx context.Context, args []string) error {
 		return fmt.Errorf("--chunk-size-bytes must be > 0")
 	}
 
+	var excludeExtensions []string
+	if strings.TrimSpace(*excludeExt) != "" {
+		for _, ext := range strings.Split(*excludeExt, ",") {
+			if trimmed := strings.TrimSpace(ext); trimmed != "" {
+				excludeExtensions = append(excludeExtensions, trimmed)
+			}
+		}
+	}
+
+	var excludeSubdirs []string
+	if strings.TrimSpace(*excludeDirs) != "" {
+		for _, dir := range strings.Split(*excludeDirs, ",") {
+			if trimmed := strings.TrimSpace(dir); trimmed != "" {
+				excludeSubdirs = append(excludeSubdirs, trimmed)
+			}
+		}
+	}
+
 	opts := archive.PackOptions{
-		RootDir:      *inputDir,
-		OutputDir:    *outputDir,
-		ModelName:    *model,
-		ModelVersion: *modelVersion,
-		Workers:      *workers,
-		ChunkSize:    *chunkSize,
+		RootDir:           *inputDir,
+		OutputDir:         *outputDir,
+		ModelName:         *model,
+		ModelVersion:      *modelVersion,
+		Workers:           *workers,
+		ChunkSize:         *chunkSize,
+		ExcludeExtensions: excludeExtensions,
+		ExcludeSubdirs:    excludeSubdirs,
 	}
 	if err := archive.Pack(ctx, opts); err != nil {
 		return fmt.Errorf("pack failed: %w", err)

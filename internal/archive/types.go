@@ -31,12 +31,14 @@ type FileChunk struct {
 }
 
 type PackOptions struct {
-	RootDir      string
-	OutputDir    string
-	ModelName    string
-	ModelVersion string
-	Workers      int
-	ChunkSize    int
+	RootDir           string
+	OutputDir         string
+	ModelName         string
+	ModelVersion      string
+	Workers           int
+	ChunkSize         int
+	ExcludeExtensions []string
+	ExcludeSubdirs    []string
 }
 
 type UnpackOptions struct {
